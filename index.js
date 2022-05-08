@@ -1,4 +1,3 @@
-// Require the libraries:
 var SocketIOFileUpload = require("socketio-file-upload")
 const fs = require('fs')
 
@@ -15,13 +14,15 @@ const { Server } = require('socket.io');
 const { join } = require("path");
 const server = http.createServer(app)
 const io = new Server(server)
+const cors = require('cors')
+app.use(cors())
 app.use(express.static(__dirname));
 app.use(express.static(__dirname + '/uploads'));
 app.use(express.json())
 app.set('view engine', 'ejs')
 
 var user = {}
-var rooms = ['DefaultRoom']
+
 
 
 app.get('/', (req, res) => {
@@ -35,78 +36,26 @@ app.get('/game', (req, res) => {
 })
 
 app.post('/game', (req, res) => {
-  // JAK PRZESŁAĆ ROOMS DO KLIENTA
 
   var username = req.body.username;
 
-  res.render('game', { roomlist: rooms, user: username });
+  res.render('game', { user: username });
 })
 
-// app.get('/deleteimage', (req, res) => {
-//     console.log(req.query);
-//     res.json(req.query.path);
-//     fs.unlinkSync(__dirname + "/uploads/" + req.query.path, () => {
 
-//     })
-// })
-let unmatched;
+var unmatched;
 players = {}, unmatched;
-
-
 
 
 io.on("connection", function (socket) {
 
   joinServer(socket);
 
-
   console.log("New socket connected: " + socket.id)
 
-  socket.on('join', (data) => {
-    var room = data.room;
-    var username = data.username;
-
-    socket.join(room);
-
-    io.to(room).emit('system-message', { 'msg': username + " has joined the " + room })
-
-  })
-
-  socket.on('get-player-count', async (data) => {
-    const clients = await io.in(data.room).fetchSockets();
-    console.log("Ilosc socketow w pokoju: " + clients.length)
-    socket.emit('get-player-count-response', { 'clients': clients.length, 'room': data.room })
-  })
-
-
-  socket.on('leave', (data) => {
-    console.log(data)
-    var room = data.room;
-    var username = data.username;
-    io.to(room).emit('system-message', { 'msg': username + " has left the " + room })
-    socket.leave(room);
-  })
-
-
-  // Make an instance of SocketIOFileUpload and listen on this socket:
-
-
-  socket.on('new-user', data => {
-    user[socket.id] = data.name
-    room = data.room
-    socket.to(room).emit('user-connected', data)
-
-
-    console.log("User info: " + user[socket.id])
-
-  })
-
-  socket.on('send-chat-message', data => {
-    socket.to(data.room).emit('chat-message', { message: data.message, name: user[socket.id] })
-  })
 
   socket.on('send-video', path => {
-    socket.to(path.room).emit('display-video', path)
+    socket.to(path.opponent).emit('display-video', path)
   })
 
   var uploader = new SocketIOFileUpload();
@@ -123,20 +72,36 @@ io.on("connection", function (socket) {
     console.log("Error from uploader", event);
   });
 
-  socket.on('create-room', (data) => {
-    if (rooms.indexOf(data.new_room_name) !== -1) {
-      console.log("The room already exsitstst")
-    } else {
-      console.log(data)
-      let room_name = data.new_room_name
-      rooms.push(room_name)
-      console.log("LIST OF ROOMS: " + rooms)
-      io.emit('new-room-received', data)
-    }
-  })
 
 socket.on('upload-pass-turn', (data) => {
-  socket.broadcast.emit('upload-pass-turn-response', data)
+  io.to(data.opponent).emit('upload-pass-turn-response', data)
+})
+
+socket.on('nok-pass-turn', (data) => {
+  io.to(data.opponent).emit('nok-pass-turn-response', data)
+})
+
+socket.on('initialize-clock', (data) => {
+  socket.broadcast.emit('initialize-clock-response', data)
+})
+
+socket.on('name-info', (data) => {
+  io.to(data.opponent).emit('name-info-response', {'name': data.name})
+  // io.to(data.sender).emit('name-info-response', {'name': data.name})
+})
+
+function delay(time) {
+  return new Promise(resolve => setTimeout(resolve, time));
+}
+
+socket.on('name2-info', async (data) => {
+  await delay(1000)
+ io.to(data.sender).emit('name-info-response', {'name': data.name2})
+  // io.to(data.sender).emit('name-info-response', {'name': data.name})
+})
+
+socket.on('send-score', (data) => {
+  io.to(data.opponent).emit('send-score-response', {'score': data.score})
 })
 
 });
@@ -152,6 +117,7 @@ function joinServer(socket) {
     isTaskGiver: true,
     isPlayerTurn: true,
     canUpload: true,
+    score: 0,
     // The socket that is associated with this player
     socket: socket
   };
@@ -164,7 +130,13 @@ function joinServer(socket) {
     players[socket.id].isTaskGiver = false;
     players[socket.id].isPlayerTurn = false;
     players[socket.id].canUpload = false;
+    players[socket.id].score = 0;
     players[unmatched].opponent = socket.id;
+
+    io.to(unmatched).emit('opponent-info', {
+      'opponent': socket.id
+    })
+
     unmatched = null;
   } else {
     unmatched = socket.id;
@@ -175,10 +147,14 @@ function joinServer(socket) {
     'opponent': players[socket.id].opponent,
     'task_giver': players[socket.id].isTaskGiver,
     'player_turn': players[socket.id].isPlayerTurn,
-    'can_upload': players[socket.id].canUpload
+    'can_upload': players[socket.id].canUpload,
+    'score': players[socket.id].score
   }
 
   console.log("Player info: \n" + JSON.stringify(player_info))
+
+  
+
   socket.emit('player-info', player_info)
 }
 
@@ -188,7 +164,6 @@ function getOpponent(socket) {
   }
   return players[players[socket.id].opponent].socket;
 }
-
 
 
 

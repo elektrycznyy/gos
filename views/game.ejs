@@ -16,65 +16,52 @@
 
   <script type="text/javascript">
 
+    var socketID;
     var isTaskGiver;
     var isPlayerTurn;
     var canUpload;
+    var playerScore;
+    var opponent;
+    var opponentName;
+    var name = '<%=user%>'
+    var looper = 0;
 
     document.addEventListener(
       "DOMContentLoaded",
       function () {
-        // Initialize instances:
         var socket = io.connect("");
 
-
-
-
-        var name = '<%=user%>'
-        var room = "Lounge";
-        joinRoom(room);
+        
 
         const messageContainer = document.getElementById('message-container')
         const messageForm = document.getElementById('send-container')
         const messageInput = document.getElementById('message-input')
 
         socket.on('player-info', (player) => {
+          socketID = socket.id;
           isTaskGiver = player.task_giver;
           isPlayerTurn = player.player_turn;
           canUpload = player.can_upload;
-          console.log(name + " PLAYER INFO: \n" + isTaskGiver + "\n" + isPlayerTurn + "\n" + canUpload)
+          playerScore = player.score;
+          opponent = player.opponent;
+          socket.emit('name-info', { 'name': name, 'sender': socket.id ,'opponent': opponent })
+          console.log(name + " PLAYER INFO: \n Socket ID: " + player.socket + "\nOpponent: " + opponent + "\n" + isTaskGiver + "\n" + isPlayerTurn + "\n" + canUpload)
           buttonStateHandler();
         })
 
-        socket.emit('new-user', { name: name, room: room })
-
-        appendMessage(`Welcome, ${name}`)
-
-        socket.on('chat-message', data => {
-          appendMessage(`${data.name}: ${data.message}`)
+        
+        socket.on('name-info-response', (data) => {
+          opponentTag = document.getElementById('opponent-name')
+          opponentName = data.name;
+          console.log('OPPONENT NAME: ' + opponentName)
+          opponentTag.innerHTML = opponentName + ':';
+          while (looper == 0) {
+            looper++;
+            socket.emit('name2-info', { 'sender': opponent, 'name2': name})   
+          }
         })
 
-        socket.on('user-connected', data => {
-          console.log(data.name + " connected.")
-          appendMessage(`${data.name} connected`)
-        })
-
-        socket.on('user-disconnected', name => {
-          appendMessage(`${name} disconnected`)
-        })
-
-        messageForm.addEventListener('submit', e => {
-          e.preventDefault()
-          const message = messageInput.value
-          appendMessage(`You: ${message}`)
-          socket.emit('send-chat-message', { message: message, room: room })
-          messageInput.value = ''
-        })
-
-        function appendMessage(message) {
-          const messageElement = document.createElement('div')
-          messageElement.innerText = message
-          messageContainer.append(messageElement)
-        }
+        
 
         var siofu = new SocketIOFileUpload(socket);
 
@@ -102,7 +89,9 @@
 
           video.setAttribute("controls", "controls");
 
-          video.src = event.detail.name;
+          video.src = "uploads/"+ event.detail.name;
+
+          console.log("VIDEO SRC: " + video.src)
 
           span_timestamp.setAttribute("class", "timestamp");
           var time = new Date().toLocaleString('pl-PL');
@@ -111,13 +100,14 @@
           div_small.innerHTML = p_username.outerHTML + span_timestamp.outerHTML + video.outerHTML + br.outerHTML;
 
           var div = document.getElementById("message-container");
-          socket.emit('send-video', { 'room': room, 'src': video.src, 'name': name, 'timestamp': time })
+          socket.emit('send-video', { 'opponent': opponent, 'src': video.src, 'name': name, 'timestamp': time })
           div.appendChild(div_small);
           div.appendChild(br)
 
           isPlayerTurn = false;
           canUpload = false;
           socket.emit('upload-pass-turn', {
+            'opponent': opponent,
             'task_giver': isTaskGiver,
             'player_turn': isPlayerTurn,
             'can_upload': canUpload
@@ -160,6 +150,15 @@
             isPlayerTurn = true;
             canUpload = false;
           }
+          else if (
+            data.task_giver == false
+            && data.player_turn == false
+            && data.can_upload == false) {
+            isTaskGiver = true;
+            isPlayerTurn = true;
+            canUpload = false;
+          }
+
           buttonStateHandler()
           console.log(name + " PLAYER INFO: \n" + isTaskGiver + "\n" + isPlayerTurn + "\n" + canUpload)
         })
@@ -169,64 +168,89 @@
           printSysMsg(data.msg);
         })
 
-        document.querySelector('#create-room').onclick = () => {
-          socket.emit('create-room', { 'username': name, 'room': room, 'new_room_name': name })
-        }
 
-        socket.on('new-room-received', (data) => {
+        socket.on('opponent-info', (data) => {
           console.log(data)
-          let createdRoom = data.new_room_name;
-          const li = document.createElement('li')
-          li.innerHTML = createdRoom
-          li.setAttribute('class', 'room_object')
-          document.querySelector('#room_list').append(li)
-          if (name == data.username) {
-            leaveRoom(room)
-            room = createdRoom;
-            joinRoom(room)
-          }
+          opponent = data.opponent;
         })
 
 
-        var playerCount = 0;
 
-        document.querySelectorAll('.room_object').forEach(li => {
-          li.onclick = () => {
 
-            console.log("Clicker room: " + room)
-            let newRoom = li.innerHTML;
-            console.log("NEW ROOM: " + newRoom)
-            if (newRoom == room) {
-              msg = `Aktualnie jestes w pokoju ${room}.`
-              printSysMsg(msg);
-            } else {
-              socket.emit('get-player-count', { 'room': newRoom })
 
-              socket.on('get-player-count-response', (data) => {
-                playerCount = data.clients;
-                console.log("ILOSC SOCKETOW W POKOJU " + data.room + ": " + playerCount)  // wchodzi dopiero po drugim kliknieciu w DefaultRoom
-              })
+        socket.on('initialize-clock-response', (data) => {
+          console.log('CLOCKKKKKKKK: ' + data.id)
+          initializeClock(data.id, data.deadline)
+        })
 
-              if (playerCount < 2) {
-                leaveRoom(room);
-                room = newRoom;
-                joinRoom(room);
-              } else {
-                printSysMsg(newRoom + "jest juz pelnyyy")
-              }
-            }
+        document.querySelector('#ok-button').onclick = () => {
+          var deadline = new Date(Date.parse(new Date()) + 5 * 60 * 1000);
+          if (
+            isPlayerTurn == true
+            && canUpload == false) {
+            canUpload = true
+            buttonStateHandler();
+            initializeClock('clockdiv', deadline);
+            socket.emit('initialize-clock', { 'id': 'clockdiv', 'deadline': deadline })
           }
-        });
-
-
-        function leaveRoom() {
-          socket.emit('leave', { 'username': name, 'room': room });
         }
 
-        function joinRoom() {
-          socket.emit('join', { 'username': name, 'room': room });
-          document.querySelector('#message-container').innerHTML = ''
+        document.querySelector('#nok-button').onclick = () => {
+          if (
+            isTaskGiver == false
+            && isPlayerTurn == true
+            && canUpload == false) {
+            isTaskGiver = true;
+            canUpload = true;
+            socket.emit('nok-pass-turn', {
+              'opponent': opponent,
+              'task_giver': isTaskGiver,
+              'player_turn': isPlayerTurn,
+              'can_upload': canUpload
+            })
+            console.log(' ZMIANA ZADAJACEGO')
+
+          } else if (
+            isTaskGiver == true
+            && isPlayerTurn == true
+            && canUpload == false) {
+            canUpload = true;
+            console.log(name + ' otrzymuje PUNKT !')
+
+            playerScore++;
+            playerScoreTag = document.getElementById('player-score')
+            playerScoreTag.innerHTML = playerScore;
+            socket.emit('send-score', {'opponent': opponent ,'score': playerScore})
+
+          }
+          buttonStateHandler();
         }
+
+        socket.on('nok-pass-turn-response', (data) => {
+          if (data.task_giver == true
+            && data.player_turn == true
+            && data.can_upload == true) {
+            isTaskGiver = false;
+            isPlayerTurn = false;
+            canUpload = false;
+          }
+          else if (
+            data.task_giver == false
+            && data.player_turn == false
+            && data.can_upload == false) {
+            isTaskGiver = true;
+            isPlayerTurn = true;
+            canUpload = false;
+          }
+
+          buttonStateHandler()
+          console.log(name + " PLAYER INFO: \n" + isTaskGiver + "\n" + isPlayerTurn + "\n" + canUpload)
+        })
+
+        socket.on('send-score-response', (data) => {
+          opponentScoreTag = document.getElementById('opponent-score')
+          opponentScoreTag.innerHTML = data.score;
+        })
 
         function printSysMsg(msg) {
           const p = document.createElement('p');
@@ -234,15 +258,25 @@
           document.querySelector('#message-container').append(p);
         }
 
+
+
       },
       false
     );
+
+    function checkStatus() {
+      console.log(name + " PLAYER INFO: \nSocket ID: "+ socketID + "\nOpponent: " + opponent + "\n" + isTaskGiver + "\n" + isPlayerTurn + "\n" + canUpload + '\nScore: ' + playerScore)
+    }
+
 
     function buttonStateHandler() {
       // Select the element with id and disable it
       const button_ok = document.getElementById("ok-button")
       const button_nok = document.getElementById("nok-button")
-      const upload_button = document.getElementById("upload_input")
+      const upload_button = document.getElementById("upload-btn")
+
+      const turnIndicator = document.getElementById("turn")
+      const giverIndicator = document.getElementById("is-giver")
 
       if (isTaskGiver == true
         && isPlayerTurn == true
@@ -287,7 +321,58 @@
         upload_button.disabled = true;
       }
 
+      if (isPlayerTurn == true) {
+        turnIndicator.innerHTML = " TWOJA KOLEJ"
+      } else {
+        turnIndicator.innerHTML = " KOLEJ PRZECIWNIKA"
+      }
+
+      if (isTaskGiver == true) {
+        giverIndicator.innerHTML = "ZADAJESZ"
+      } else {
+        giverIndicator.innerHTML = "POWTARZASZ"
+      }
+
     }
+
+
+    function getTimeRemaining(endtime) {
+      var t = Date.parse(endtime) - Date.parse(new Date());
+      var seconds = Math.floor((t / 1000) % 60);
+      var minutes = Math.floor((t / 1000 / 60) % 60);
+      return {
+        'total': t,
+        'minutes': minutes,
+        'seconds': seconds
+      };
+    }
+
+    function initializeClock(id, endtime) {
+      var clock = document.getElementById(id);
+      var minutesSpan = clock.querySelector('.minutes');
+      var secondsSpan = clock.querySelector('.seconds');
+
+      function updateClock() {
+        var t = getTimeRemaining(endtime);
+
+        minutesSpan.innerHTML = ('0' + t.minutes).slice(-2);
+        secondsSpan.innerHTML = ('0' + t.seconds).slice(-2);
+
+        if (t.total <= 0) {
+          clearInterval(timeinterval);
+        }
+      }
+
+      updateClock();
+      var timeinterval = setInterval(updateClock, 1000);
+    }
+
+
+
+
+
+
+
 
   </script>
 </head>
@@ -299,47 +384,77 @@
 
 
 
-  <div class="wrapper">
-    <div style="text-align: center; margin-top: 1em;">
-      TURN:
-      <div id="oknok"></div>
-      <button id="ok-button" type="button" class="btn btn-success btn-lg">Trick was OK</button>
-      <button id="nok-button" type="button" class="btn btn-danger btn-lg">Trick was NOT OK</button>
+  <div class="container">
+    <div class="header" style="text-align: center; margin-top: 1em;">
+      <div id="player-div" class="col" style="text-align: center; ">
+        <p class="tag">
+          <%= user %>:
+        </p>
+        <span class="score" id="player-score"> 0</span>
+      </div>
+
+      <div class="col">
+
+        <span id="is-giver"> </span>
+        <div id="turn"></div>
+
+        <div id="timer-div">
+          <div id="timer">05:00 </div>
+        </div>
+
+        <div id="upl">
+          <input class="upload" type="file" id="upload_input" multiple accept="file/*" style="display:none;" />
+          <button id="upload-btn" onclick="document.getElementById('upload_input').click();" type="button"
+            class="btn btn-warning btn-lg">UPLOAD</button>
+        </div>
+
+        <div id="oknok">
+          <button id="ok-button" type="button" class="btn btn-success btn-lg">Trick was OK</button>
+          <button id="nok-button" type="button" class="btn btn-danger btn-lg">Trick was NOT OK</button>
+        </div>
+      </div>
+
+      <div id="opponent-div" class="col" style="text-align: center;">
+        <p id="opponent-name" class="tag">
+          <% if (typeof opponent==='undefined' ) { %>
+            Undefined: 
+          <% } %>
+          
+        </p>
+       
+            <span class="score" id="opponent-score"> 0</span>
+
+      </div>
     </div>
 
-    <p>
-      <label>Choose File:
-        <input type="file" id="upload_input" multiple accept="file/*" /></label>
-    </p>
+
     <div id="message-container">
 
     </div>
-    <div id="rooms-container"
-      style="float: right;width: 300px; min-height: 300px; border-style: solid; padding-left: 10px;">
-      <button id="create-room">CREATE ROOM</button>
-
-      <ul id="room_list">
-        <p> Dostępne pokoje: </p>
-        <% for(var k=0; k<roomlist.length; k++) {%>
-          <li class="room_object">
-            <%=roomlist[k]%>
-          </li>
-          <% } %>
-      </ul>
 
 
-    </div>
 
-    <!-- A button element with id "theButton" -->
-    <button id="theButton" class="btn btn-success btn-lg">Hi, I'm a button</button>
 
     <!-- A button element that executes "disableButton" function upon clicking -->
-    <button onclick="buttonStateHandler()">Disable</button>
+    <button onclick="checkStatus()" style="position: fixed;
+    padding-bottom: 5px;
+    bottom: 0;">CHECK STATUS</button>
 
-    <form id="send-container">
-      <input type="text" id="message-input">
-      <button type="submit" id="send-button">Send</button>
-    </form>
+
+
+    <div id="clockdiv" style="position: fixed;
+    padding-bottom: 40px;
+    bottom: 0;">
+      <div>
+        <span class="minutes"></span>
+        <div class="smalltext">Minutes</div>
+      </div>
+      <div>
+        <span class="seconds"></span>
+        <div class="smalltext">Seconds</div>
+      </div>
+    </div>
+
 
   </div>
 

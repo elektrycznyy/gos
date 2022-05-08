@@ -5,10 +5,64 @@ body {
   justify-content: center;
 }
 
-.wrapper {
+.header {
   display: grid;
-  grid-template-columns: 3fr 1fr;
+  grid-template-columns: 1fr 2fr 1fr;
   gap: 10px;
+  border-style: solid;
+}
+
+#player-div {
+  border-right: solid;
+}
+#opponent-div {
+  border-left: solid;
+}
+
+.tag {
+  margin-block-end: 0;
+  padding-top: 1em;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.score {
+  font-size: 5em;
+  font-weight: 700;
+}
+
+#is-giver {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+#turn{
+  /* padding-bottom: 0.5rem; */
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+#timer {
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+#upload-btn {
+  width: 100%;
+}
+
+#ok-button{
+  /* display: inline-block; */
+  width: 48%;
+  height: 80px;
+  float: left;
+}
+
+#nok-button {
+  /* display: inline-block; */
+  width: 48%;
+  height: 80px;
+  float: right;
 }
 
 #message-container {
@@ -17,35 +71,22 @@ body {
 }
 
 #message-container div {
-  background-color: #CCC;
+  /* background-color: #CCC; */
   padding: 5px;
 }
 
-#message-container div:nth-child(2n) {
+/* #message-container div:nth-child(2n) {
   background-color: #FFF;
-}
+} */
 
 
-#send-container {
-  position: fixed;
-  padding-bottom: 30px;
-  bottom: 0;
-  background-color: white;
-  max-width: 1200px;
-  width: 80%;
-  display: flex;
-}
-
-#message-input {
-  flex-grow: 1;
-}
 
 .other-msg {
   width: 340px;
   height: auto;
   float: right;
   margin-right: 2em;
-  margin-left: 1em;
+  margin-left: 50em;
   padding: 0.5em 0.5em 0.5em 1em;
   border-radius: 5px;
   border-color: grey;
@@ -71,7 +112,7 @@ body {
   height: auto;
   float: left;
   margin-left: 2em;
-  margin-right: 1em;
+  margin-right: 50em;
   padding: 0.5em 0.5em 0.5em 1em;
   border-radius: 5px;
   border-color: #206ED2;
@@ -90,27 +131,4 @@ body {
 }
 .my-msg>p {
   margin: 0px;
-}
-
-.room_object {
-  text-align: center;
-	box-shadow: 0px 0px 0px 0px #276873;
-	background-color:#599bb3;
-	border-radius:10px;
-	border:1px solid #29668f;
-	display:inline-block;
-	cursor:pointer;
-	color:#ffffff;
-	font-family:Arial;
-	font-size:20px;
-	font-weight:bold;
-	padding:10px 15px;
-	text-decoration:none;
-}
-.room-object:hover {
-	background-color:#408c99;
-}
-.room-object:active {
-	position:relative;
-	top:1px;
 }
