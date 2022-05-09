@@ -1,6 +1,6 @@
 var SocketIOFileUpload = require("socketio-file-upload")
 const fs = require('fs')
-
+const port = 8000;
 const express = require('express')
 const app = express()
 app.use(SocketIOFileUpload.router);
@@ -167,6 +167,6 @@ function getOpponent(socket) {
 
 
 
-server.listen(8000, () => {
+server.listen(process.env.PORT || port, () => {
   console.log("Server is listening on port 8000");
 });
