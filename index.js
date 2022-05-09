@@ -21,9 +21,6 @@ app.use(express.static(__dirname + '/uploads'));
 app.use(express.json())
 app.set('view engine', 'ejs')
 
-var user = {}
-
-
 
 app.get('/', (req, res) => {
 
@@ -102,6 +99,10 @@ socket.on('name2-info', async (data) => {
 
 socket.on('send-score', (data) => {
   io.to(data.opponent).emit('send-score-response', {'score': data.score})
+  if (data.score >= 2) {
+   io.to(data.opponent).emit('game-over', {'winner': data.player_name})
+   io.to(data.socket).emit('game-over', {'winner': data.player_name})
+  }
 })
 
 });

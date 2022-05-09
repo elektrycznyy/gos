@@ -89,7 +89,7 @@
 
           video.setAttribute("controls", "controls");
 
-          video.src = "uploads/"+ event.detail.name;
+          video.src = "/uploads/" + event.detail.name;
 
           console.log("VIDEO SRC: " + video.src)
 
@@ -174,10 +174,6 @@
           opponent = data.opponent;
         })
 
-
-
-
-
         socket.on('initialize-clock-response', (data) => {
           console.log('CLOCKKKKKKKK: ' + data.id)
           initializeClock(data.id, data.deadline)
@@ -220,11 +216,21 @@
             playerScore++;
             playerScoreTag = document.getElementById('player-score')
             playerScoreTag.innerHTML = playerScore;
-            socket.emit('send-score', {'opponent': opponent ,'score': playerScore})
+            socket.emit('send-score', {'socket': socketID,'player_name': name,'opponent': opponent,'opponent_name': opponentName,'score': playerScore})
 
           }
           buttonStateHandler();
         }
+
+        socket.on('game-over', (data) => {
+          console.log("GAME OVER\n"+data)
+          if (data.winner == name){
+            alert("WYGRAŁEŚ!\nKoniec gry.\nNaciśnij OK, aby wrócic do strony głównej.")
+          } else {
+            alert("PRZEGRAŁEŚ!\nKoniec gry.\nNaciśnij OK, aby wrócic do strony głównej.")
+          }
+          window.location = '/';
+        })
 
         socket.on('nok-pass-turn-response', (data) => {
           if (data.task_giver == true
