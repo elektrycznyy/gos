@@ -89,7 +89,7 @@
 
           video.setAttribute("controls", "controls");
 
-          video.src = event.detail.name;
+          video.src = 'uploads/' + event.detail.name;
 
           console.log("VIDEO SRC: " + video.src)
 
@@ -126,6 +126,8 @@
 
           video.setAttribute("controls", "controls");
           video.src = path.src;
+
+          console.log("VIDEO SRC: " + video.src)
 
           var p_username = document.createElement('p');
           p_username.innerHTML = path.name;
