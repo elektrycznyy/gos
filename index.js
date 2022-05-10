@@ -1,6 +1,6 @@
 var SocketIOFileUpload = require("socketio-file-upload")
 const fs = require('fs')
-const port = 8000;
+const port = process.env.PORT || 8000;
 const express = require('express')
 const app = express()
 app.use(SocketIOFileUpload.router);
@@ -39,8 +39,8 @@ app.post('/game', (req, res) => {
   res.render('game', { user: username });
 })
 
-
 var unmatched;
+
 players = {}, unmatched;
 
 
@@ -52,6 +52,7 @@ io.on("connection", function (socket) {
 
 
   socket.on('send-video', path => {
+    console.log(__dirname + path.src)
     socket.to(path.opponent).emit('display-video', path)
   })
 
@@ -69,6 +70,9 @@ io.on("connection", function (socket) {
     console.log("Error from uploader", event);
   });
 
+socket.on('score-point', (data) => {
+  io.to(data.opponent).emit('score-point-response', data)
+})
 
 socket.on('upload-pass-turn', (data) => {
   io.to(data.opponent).emit('upload-pass-turn-response', data)
@@ -78,13 +82,16 @@ socket.on('nok-pass-turn', (data) => {
   io.to(data.opponent).emit('nok-pass-turn-response', data)
 })
 
+socket.on('timer-controller', (data) => {
+  io.to(data.opponent).emit('timer-controller-response', data)
+})
+
 socket.on('initialize-clock', (data) => {
-  socket.broadcast.emit('initialize-clock-response', data)
+  io.to(data.opponent).emit('initialize-clock-response', data)
 })
 
 socket.on('name-info', (data) => {
   io.to(data.opponent).emit('name-info-response', {'name': data.name})
-  // io.to(data.sender).emit('name-info-response', {'name': data.name})
 })
 
 function delay(time) {
@@ -93,7 +100,7 @@ function delay(time) {
 
 socket.on('name2-info', async (data) => {
   await delay(1000)
- io.to(data.sender).emit('name-info-response', {'name': data.name2})
+ io.to(data.sender).emit('name2-info-response', {'name': data.name2})
   // io.to(data.sender).emit('name-info-response', {'name': data.name})
 })
 
@@ -102,6 +109,15 @@ socket.on('send-score', (data) => {
   if (data.score >= 2) {
    io.to(data.opponent).emit('game-over', {'winner': data.player_name})
    io.to(data.socket).emit('game-over', {'winner': data.player_name})
+  }
+})
+
+socket.on('disconnect', () => {
+
+  if (!unmatched) {
+    unmatched = socket.id;
+  } else {
+    unmatched = null
   }
 })
 
@@ -134,15 +150,17 @@ function joinServer(socket) {
     players[socket.id].score = 0;
     players[unmatched].opponent = socket.id;
 
+
     io.to(unmatched).emit('opponent-info', {
       'opponent': socket.id
     })
-
+    
     unmatched = null;
   } else {
+    
     unmatched = socket.id;
   }
-
+ 
   var player_info = {
     'socket': socket.id,
     'opponent': players[socket.id].opponent,
@@ -153,8 +171,6 @@ function joinServer(socket) {
   }
 
   console.log("Player info: \n" + JSON.stringify(player_info))
-
-  
 
   socket.emit('player-info', player_info)
 }
@@ -167,7 +183,6 @@ function getOpponent(socket) {
 }
 
 
-
-server.listen(process.env.PORT || port, () => {
-  console.log("Server is listening on port 8000");
+server.listen(port, () => {
+  console.log(`Server is listening on port ${port}`);
 });

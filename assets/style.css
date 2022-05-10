@@ -1,28 +1,58 @@
+@-webkit-keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+@-moz-keyframes fadeIn { from { opacity:0;  } to { opacity:1; } }
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
 body {
+  background-color: #5a5f64;
   padding: 0;
   margin: 0;
   display: flex;
   justify-content: center;
 }
 
+
+#wrapper {
+  min-width: 58rem;
+  max-width: 68rem;
+  /* animation */
+  animation-name: fadeIn;
+  animation-duration: 0.75s;
+  animation-fill-mode: forwards;
+  animation-timing-function: ease-in-out;
+}
+
+#logo {
+  text-align: center;
+  font-family: 'Oswald', sans-serif;
+  font-size: 4rem;
+  color: #ffffff;
+  margin:0;
+  outline: black 2px;
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000;
+}
+
 .header {
   display: grid;
   grid-template-columns: 1fr 2fr 1fr;
   gap: 10px;
-  border-style: solid;
+  
 }
 
 #player-div {
-  border-right: solid;
+  font-family: 'Ubuntu', sans-serif;
 }
 #opponent-div {
-  border-left: solid;
+  font-family: 'Ubuntu', sans-serif;
 }
 
 .tag {
   margin-block-end: 0;
   padding-top: 1em;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 700;
 }
 
@@ -32,22 +62,32 @@ body {
 }
 
 #is-giver {
+  margin-top: 1rem;
+  font-family: 'Ubuntu', sans-serif;
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 #turn{
-  /* padding-bottom: 0.5rem; */
+  font-family: 'Ubuntu', sans-serif;
   font-size: 1.5rem;
   font-weight: 600;
 }
 
-#timer {
-  font-size: 2rem;
-  font-weight: 800;
+#clockdiv {
+  font-family: 'Oswald', sans-serif;
+  font-size: 3rem;
+  font-weight: 900;
+}
+
+.minutes, .seconds {
+  font-family: 'Oswald', sans-serif;
+  font-size: 3rem;
+  font-weight: 900;
 }
 
 #upload-btn {
+  height: 80px;
   width: 100%;
 }
 
@@ -66,18 +106,15 @@ body {
 }
 
 #message-container {
-  border-style: solid;
-  max-width: 1200px;
+  /* border-style: solid; */
+  min-height: 20rem;
+  max-width: 78rem;
 }
 
 #message-container div {
   /* background-color: #CCC; */
   padding: 5px;
 }
-
-/* #message-container div:nth-child(2n) {
-  background-color: #FFF;
-} */
 
 
 
@@ -86,13 +123,13 @@ body {
   height: auto;
   float: right;
   margin-right: 2em;
-  margin-left: 50em;
+  margin-left: auto;
   padding: 0.5em 0.5em 0.5em 1em;
   border-radius: 5px;
-  border-color: grey;
+  border-color: black;
   border-width: 1px;
   border-style: solid;
-  background-color: #85acff;
+  background-color: #ffc107;
   /* animation */
   animation-name: fadeIn;
   animation-duration: 0.75s;
@@ -110,15 +147,16 @@ body {
 .my-msg {
   width: 340px;
   height: auto;
+  
   float: left;
   margin-left: 2em;
-  margin-right: 50em;
+  margin-right: 40rem;
   padding: 0.5em 0.5em 0.5em 1em;
   border-radius: 5px;
-  border-color: #206ED2;
+  border-color: black;
   border-width: 1px;
   border-style: solid;
-  background-color: #85ff85;
+  background-color: #14BAFF;
   /* animation */
   animation-name: fadeIn;
   animation-duration: 0.75s;

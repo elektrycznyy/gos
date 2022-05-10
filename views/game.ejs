@@ -14,6 +14,11 @@
     integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
     crossorigin="anonymous"></script>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500&family=Ubuntu&display=swap" rel="stylesheet">
+
+
   <script type="text/javascript">
 
     var socketID;
@@ -25,13 +30,16 @@
     var opponentName;
     var name = '<%=user%>'
     var looper = 0;
+    var timeinterval;
+    var isMyTimer = false;
+    var deadline;
 
     document.addEventListener(
       "DOMContentLoaded",
       function () {
         var socket = io.connect("");
 
-        
+
 
         const messageContainer = document.getElementById('message-container')
         const messageForm = document.getElementById('send-container')
@@ -44,24 +52,31 @@
           canUpload = player.can_upload;
           playerScore = player.score;
           opponent = player.opponent;
-          socket.emit('name-info', { 'name': name, 'sender': socket.id ,'opponent': opponent })
+          socket.emit('name-info', { 'name': name, 'sender': socket.id, 'opponent': opponent })
           console.log(name + " PLAYER INFO: \n Socket ID: " + player.socket + "\nOpponent: " + opponent + "\n" + isTaskGiver + "\n" + isPlayerTurn + "\n" + canUpload)
           buttonStateHandler();
         })
 
-        
+
         socket.on('name-info-response', (data) => {
           opponentTag = document.getElementById('opponent-name')
           opponentName = data.name;
           console.log('OPPONENT NAME: ' + opponentName)
           opponentTag.innerHTML = opponentName + ':';
-          while (looper == 0) {
-            looper++;
-            socket.emit('name2-info', { 'sender': opponent, 'name2': name})   
-          }
+
+          console.log(looper)
+          looper++;
+          socket.emit('name2-info', { 'sender': opponent, 'name2': name })
+
         })
 
-        
+        socket.on('name2-info-response', (data) => {
+          opponentTag = document.getElementById('opponent-name')
+          opponentName = data.name;
+          console.log('OPPONENT NAME: ' + opponentName)
+          opponentTag.innerHTML = opponentName + ':';
+        })
+
 
         var siofu = new SocketIOFileUpload(socket);
 
@@ -89,7 +104,7 @@
 
           video.setAttribute("controls", "controls");
 
-          video.src = 'uploads/' + event.detail.name;
+          video.src = '/uploads/' + event.detail.name;
 
           console.log("VIDEO SRC: " + video.src)
 
@@ -106,12 +121,14 @@
 
           isPlayerTurn = false;
           canUpload = false;
+          isMyTimer = false;
           socket.emit('upload-pass-turn', {
             'opponent': opponent,
             'task_giver': isTaskGiver,
             'player_turn': isPlayerTurn,
             'can_upload': canUpload
           })
+          
           buttonStateHandler();
         });
 
@@ -143,7 +160,7 @@
         })
 
 
-        // @@@@@@@@@ LOGIKA @@@@@@@@@@@@@@@@@@
+
         socket.on('upload-pass-turn-response', (data) => {
           if (data.task_giver == true
             && data.player_turn == false
@@ -160,7 +177,10 @@
             isPlayerTurn = true;
             canUpload = false;
           }
-
+          isMyTimer = true;
+          deadline = new Date(Date.parse(new Date()) + 0.2 * 60 * 1000);
+          initializeClock('clockdiv', deadline);
+          socket.emit('initialize-clock', { 'player': socketID, 'opponent': opponent, 'id': 'clockdiv', 'deadline': deadline })
           buttonStateHandler()
           console.log(name + " PLAYER INFO: \n" + isTaskGiver + "\n" + isPlayerTurn + "\n" + canUpload)
         })
@@ -178,18 +198,16 @@
 
         socket.on('initialize-clock-response', (data) => {
           console.log('CLOCKKKKKKKK: ' + data.id)
+
           initializeClock(data.id, data.deadline)
         })
 
         document.querySelector('#ok-button').onclick = () => {
-          var deadline = new Date(Date.parse(new Date()) + 5 * 60 * 1000);
           if (
             isPlayerTurn == true
             && canUpload == false) {
             canUpload = true
             buttonStateHandler();
-            initializeClock('clockdiv', deadline);
-            socket.emit('initialize-clock', { 'id': 'clockdiv', 'deadline': deadline })
           }
         }
 
@@ -218,15 +236,25 @@
             playerScore++;
             playerScoreTag = document.getElementById('player-score')
             playerScoreTag.innerHTML = playerScore;
-            socket.emit('send-score', {'socket': socketID,'player_name': name,'opponent': opponent,'opponent_name': opponentName,'score': playerScore})
+            socket.emit('send-score', { 'socket': socketID, 'player_name': name, 'opponent': opponent, 'opponent_name': opponentName, 'score': playerScore })
 
           }
+          deadline = new Date(Date.parse(new Date()) + 0.2 * 60 * 1000);
+          initializeClock('clockdiv', deadline)
+          socket.emit('initialize-clock', { 'player': socketID, 'opponent': opponent, 'id': 'clockdiv', 'deadline': deadline })
           buttonStateHandler();
         }
 
+        socket.on('score-point-response', (data) => {
+          playerScore++;
+          playerScoreTag = document.getElementById('player-score')
+          playerScoreTag.innerHTML = playerScore;
+          socket.emit('send-score', { 'socket': socketID, 'player_name': name, 'opponent': opponent, 'opponent_name': opponentName, 'score': playerScore })
+        })
+
         socket.on('game-over', (data) => {
-          console.log("GAME OVER\n"+data)
-          if (data.winner == name){
+          console.log("GAME OVER\n" + data)
+          if (data.winner == name) {
             alert("WYGRAŁEŚ!\nKoniec gry.\nNaciśnij OK, aby wrócic do strony głównej.")
           } else {
             alert("PRZEGRAŁEŚ!\nKoniec gry.\nNaciśnij OK, aby wrócic do strony głównej.")
@@ -255,6 +283,23 @@
           console.log(name + " PLAYER INFO: \n" + isTaskGiver + "\n" + isPlayerTurn + "\n" + canUpload)
         })
 
+        socket.on('timer-controller-response', (data) => {
+          console.log(name + " TAJM KONTROLER: \n" + data.task_giver + "\n" + data.player_turn + "\n" + data.can_upload + "\n" + data.timer_status)
+          if (data.task_giver == false
+            && data.player_turn == false
+            && data.can_upload == false
+            && data.timer_status == false) {
+            isTaskGiver = true;
+            isPlayerTurn = true;
+            canUpload = true;
+            isMyTimer = true;
+          }
+          deadline = new Date(Date.parse(new Date()) + 0.2 * 60 * 1000);
+          initializeClock('clockdiv', deadline)
+          socket.emit('initialize-clock', { 'player': socketID, 'opponent': opponent, 'id': 'clockdiv', 'deadline': deadline })
+          buttonStateHandler()
+        })
+
         socket.on('send-score-response', (data) => {
           opponentScoreTag = document.getElementById('opponent-score')
           opponentScoreTag.innerHTML = data.score;
@@ -267,18 +312,69 @@
         }
 
 
+        function initializeClock(id, endtime) {
+          clearInterval(timeinterval)
+          var clock = document.getElementById(id);
+          var minutesSpan = clock.querySelector('.minutes');
+          var secondsSpan = clock.querySelector('.seconds');
+
+          function updateClock() {
+            var t = getTimeRemaining(endtime);
+
+            minutesSpan.innerHTML = ('0' + t.minutes).slice(-2);
+            secondsSpan.innerHTML = ('0' + t.seconds).slice(-2);
+
+            if (t.total <= 0 && !isTaskGiver && isMyTimer) {
+              socket.emit('score-point', { 'player': socketID, 'opponent': opponent })
+              console.log(name + ' TIMEOUT INFO:\n' + isTaskGiver + "\n" + isPlayerTurn + "\n" + canUpload + "\n timer: " + isMyTimer)
+              isPlayerTurn = false;
+              canUpload = false;
+              isMyTimer = false;
+              socket.emit('timer-controller', {
+                'opponent': opponent,
+                'task_giver': isTaskGiver,
+                'player_turn': isPlayerTurn,
+                'can_upload': canUpload,
+                'timer_status': isMyTimer
+              })
+              clearInterval(timeinterval);
+              buttonStateHandler();
+
+            } else if (t.total <= 0 && isTaskGiver && isMyTimer) {
+              console.log(name + ' TIMEOUT INFO taskGiver:\n' + isTaskGiver + "\n" + isPlayerTurn + "\n" + canUpload + "\n timer: " + isMyTimer)
+              isTaskGiver = false;
+              isPlayerTurn = false;
+              canUpload = false;
+              isMyTimer = false;
+
+              socket.emit('timer-controller', {
+                'opponent': opponent,
+                'task_giver': isTaskGiver,
+                'player_turn': isPlayerTurn,
+                'can_upload': canUpload,
+                'timer_status': isMyTimer
+              })
+              clearInterval(timeinterval);
+              buttonStateHandler();
+            }
+          }
+
+          updateClock();
+          timeinterval = setInterval(updateClock, 1000);
+        }
+
 
       },
       false
     );
 
     function checkStatus() {
-      console.log(name + " PLAYER INFO: \nSocket ID: "+ socketID + "\nOpponent: " + opponent + "\n" + isTaskGiver + "\n" + isPlayerTurn + "\n" + canUpload + '\nScore: ' + playerScore)
+      console.log(name + " PLAYER INFO: \nSocket ID: " + socketID + "\nOpponent: " + opponent + "\n" + isTaskGiver + "\n" + isPlayerTurn + "\n" + canUpload + '\nScore: ' + playerScore)
     }
 
 
     function buttonStateHandler() {
-      // Select the element with id and disable it
+
       const button_ok = document.getElementById("ok-button")
       const button_nok = document.getElementById("nok-button")
       const upload_button = document.getElementById("upload-btn")
@@ -355,33 +451,6 @@
       };
     }
 
-    function initializeClock(id, endtime) {
-      var clock = document.getElementById(id);
-      var minutesSpan = clock.querySelector('.minutes');
-      var secondsSpan = clock.querySelector('.seconds');
-
-      function updateClock() {
-        var t = getTimeRemaining(endtime);
-
-        minutesSpan.innerHTML = ('0' + t.minutes).slice(-2);
-        secondsSpan.innerHTML = ('0' + t.seconds).slice(-2);
-
-        if (t.total <= 0) {
-          clearInterval(timeinterval);
-        }
-      }
-
-      updateClock();
-      var timeinterval = setInterval(updateClock, 1000);
-    }
-
-
-
-
-
-
-
-
   </script>
 </head>
 
@@ -389,85 +458,61 @@
 
 
 <body>
+  <div id="big-cont">
 
+    <div id="logo"> Game of SKATE</div>
 
-
-  <div class="container">
-    <div class="header" style="text-align: center; margin-top: 1em;">
-      <div id="player-div" class="col" style="text-align: center; ">
-        <p class="tag">
-          <%= user %>:
-        </p>
-        <span class="score" id="player-score"> 0</span>
-      </div>
-
-      <div class="col">
-
-        <span id="is-giver"> </span>
-        <div id="turn"></div>
-
-        <div id="timer-div">
-          <div id="timer">05:00 </div>
+    <div id="wrapper" class="card">
+      <div class="header" style="text-align: center; margin-top: 1em;">
+        <div id="player-div" class="card" style="text-align: center; ">
+          <p class="tag">
+            <%= user %>:
+          </p>
+          <span class="score" id="player-score"> 0</span>
         </div>
 
-        <div id="upl">
-          <input class="upload" type="file" id="upload_input" multiple accept="file/*" style="display:none;" />
-          <button id="upload-btn" onclick="document.getElementById('upload_input').click();" type="button"
-            class="btn btn-warning btn-lg">UPLOAD</button>
+        <div class="card">
+
+          <span id="is-giver"> </span>
+          <div id="turn"></div>
+
+          <div id="clockdiv">
+            <span class="minutes">00</span>:<span class="seconds">00</span>
+          </div>
+
+          <div id="upl">
+            <input class="upload" type="file" id="upload_input" multiple accept="file/*" style="display:none;" />
+            <button id="upload-btn" onclick="document.getElementById('upload_input').click();" type="button"
+              class="btn btn-warning btn-lg">UPLOAD</button>
+          </div>
+
+          <div id="oknok">
+            <button id="ok-button" type="button" class="btn btn-success btn-lg">Trick was OK</button>
+            <button id="nok-button" type="button" class="btn btn-danger btn-lg">Trick was NOT OK</button>
+          </div>
         </div>
 
-        <div id="oknok">
-          <button id="ok-button" type="button" class="btn btn-success btn-lg">Trick was OK</button>
-          <button id="nok-button" type="button" class="btn btn-danger btn-lg">Trick was NOT OK</button>
+        <div id="opponent-div" class="card" style="text-align: center;">
+          <p id="opponent-name" class="tag">
+            <% if (typeof opponent==='undefined' ) { %>
+              Undefined:
+              <% } %>
+          </p>
+          <span class="score" id="opponent-score"> 0</span>
         </div>
       </div>
 
-      <div id="opponent-div" class="col" style="text-align: center;">
-        <p id="opponent-name" class="tag">
-          <% if (typeof opponent==='undefined' ) { %>
-            Undefined: 
-          <% } %>
-          
-        </p>
-       
-            <span class="score" id="opponent-score"> 0</span>
 
+      <div class="card" id="message-container">
       </div>
-    </div>
 
-
-    <div id="message-container">
-
-    </div>
-
-
-
-
-    <!-- A button element that executes "disableButton" function upon clicking -->
-    <button onclick="checkStatus()" style="position: fixed;
+      
+      <!-- <button onclick="checkStatus()" style="position: fixed;
     padding-bottom: 5px;
-    bottom: 0;">CHECK STATUS</button>
+    bottom: 0;">CHECK STATUS</button> -->
 
-
-
-    <div id="clockdiv" style="position: fixed;
-    padding-bottom: 40px;
-    bottom: 0;">
-      <div>
-        <span class="minutes"></span>
-        <div class="smalltext">Minutes</div>
-      </div>
-      <div>
-        <span class="seconds"></span>
-        <div class="smalltext">Seconds</div>
-      </div>
     </div>
-
-
   </div>
-
-
-
 </body>
 
 </html>
