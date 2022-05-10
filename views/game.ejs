@@ -57,6 +57,12 @@
           buttonStateHandler();
         })
 
+        socket.on('player-left', () => {
+          console.log('\nPLAYER LEFT !!!\n');
+          alert("Przeciwnik opuścił grę.\nNastąpi przeniesienie do strony głównej.")
+          window.location = '/';
+        })
+
 
         socket.on('name-info-response', (data) => {
           opponentTag = document.getElementById('opponent-name')
@@ -105,6 +111,7 @@
           video.setAttribute("controls", "controls");
 
           video.src = '/uploads/' + event.detail.name;
+          video.load();
 
           console.log("VIDEO SRC: " + video.src)
 
@@ -132,8 +139,8 @@
           buttonStateHandler();
         });
 
-        socket.on('display-video', path => {
-
+        socket.on('display-video', async path => {
+          await delay(500);
           var video = document.createElement("video");
           var div_small = document.createElement('div');
           var span_timestamp = document.createElement('span');
@@ -143,6 +150,7 @@
 
           video.setAttribute("controls", "controls");
           video.src = path.src;
+          video.load();
 
           console.log("VIDEO SRC: " + video.src)
 
@@ -156,7 +164,9 @@
 
           var div = document.getElementById("message-container");
 
+          
           div.append(div_small);
+          div.append(br);
         })
 
 
@@ -257,7 +267,7 @@
           if (data.winner == name) {
             alert("WYGRAŁEŚ!\nKoniec gry.\nNaciśnij OK, aby wrócic do strony głównej.")
           } else {
-            alert("PRZEGRAŁEŚ!\nKoniec gry.\nNaciśnij OK, aby wrócic do strony głównej.")
+            alert("Gracz " + data.winner + " wygrywa!\nKoniec gry.\nNaciśnij OK, aby wrócic do strony głównej.")
           }
           window.location = '/';
         })
@@ -439,6 +449,9 @@
 
     }
 
+    function delay(time) {
+      return new Promise(resolve => setTimeout(resolve, time));
+    }
 
     function getTimeRemaining(endtime) {
       var t = Date.parse(endtime) - Date.parse(new Date());

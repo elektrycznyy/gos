@@ -9,6 +9,8 @@ var bodyParser = require('body-parser');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+
+
 const http = require('http')
 const { Server } = require('socket.io');
 const { join } = require("path");
@@ -106,19 +108,23 @@ socket.on('name2-info', async (data) => {
 
 socket.on('send-score', (data) => {
   io.to(data.opponent).emit('send-score-response', {'score': data.score})
-  if (data.score >= 2) {
+  if (data.score >= 5) {
    io.to(data.opponent).emit('game-over', {'winner': data.player_name})
    io.to(data.socket).emit('game-over', {'winner': data.player_name})
   }
 })
 
 socket.on('disconnect', () => {
+  console.log('PLAYER LEFT, opponent: ', players[socket.id].opponent)
+  io.to(players[socket.id].opponent).emit('player-left', {'socket': socket.id})
 
   if (!unmatched) {
     unmatched = socket.id;
   } else {
     unmatched = null
   }
+  
+
 })
 
 });

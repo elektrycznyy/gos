@@ -141,6 +141,8 @@ body {
   width: 320px;
 }
 .other-msg>p {
+  font-size: large;
+  font-weight: 600;
   margin: 0px;
 }
 
@@ -168,5 +170,7 @@ body {
   width: 320px;
 }
 .my-msg>p {
+  font-size: large;
+  font-weight: 600;
   margin: 0px;
 }
